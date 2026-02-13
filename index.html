@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mabinay Transport Fleet</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app">
+        <aside id="sidebar">
+            
+            <div id="adminDashboard" style="display: none; flex-direction: column; height: 100%;">
+                <div class="admin-header">
+                    <span><i class="fas fa-user-cog"></i> Admin Panel</span>
+                    <button onclick="logoutAdmin()" class="text-link" style="color: #cbd5e1;">Logout</button>
+                </div>
+
+                <div class="admin-tabs">
+                    <button id="btnTabDrivers" class="tab-btn active" onclick="switchAdminTab('drivers')">Drivers</button>
+                    <button id="btnTabUnits" class="tab-btn" onclick="switchAdminTab('units')">Jeeps</button>
+                    <button id="btnTabHistory" class="tab-btn" onclick="switchAdminTab('history')">History</button>
+                </div>
+
+                <div id="tabDrivers" class="tab-content">
+                    <table class="admin-table">
+                        <thead><tr><th>Name</th><th>PIN</th><th>Unit</th><th>Action</th></tr></thead>
+                        <tbody id="driverTableBody"></tbody>
+                    </table>
+                    <button onclick="openEditDriverModal()" class="add-btn"><i class="fas fa-plus"></i> Add Driver</button>
+                </div>
+
+                <div id="tabUnits" class="tab-content" style="display: none;">
+                    <table class="admin-table">
+                        <thead><tr><th>ID</th><th>Plate</th><th>Route</th><th>Action</th></tr></thead>
+                        <tbody id="jeepTableBody"></tbody>
+                    </table>
+                    <button onclick="openAddJeepModal()" class="add-btn"><i class="fas fa-bus"></i> Add Jeep</button>
+                </div>
+
+                <div id="tabHistory" class="tab-content" style="display: none;">
+                    <select id="historyJeepSelect" onchange="loadAdminHistory()" class="modal-input" style="text-align: left;">
+                        <option value="">-- Select Unit --</option>
+                    </select>
+                    <div id="adminHistoryList" class="history-list">
+                        <p style="text-align:center; color:#999; margin-top:20px;">Select a unit to view logs.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="publicDashboard" style="display: flex; flex-direction: column; gap: 15px; height: 100%;">
+                <div class="brand-header">
+                    <div class="brand-logo"><i class="fas fa-bus-alt"></i></div>
+                    <div class="brand-text"><h1>Mabinay Fleet</h1><span class="status-badge">● System Online</span></div>
+                </div>
+
+                <div class="location-card">
+                    <p class="card-label">SELECTED UNIT</p>
+                    <h2 id="selectedJeepName" class="location-big">Select a Jeep</h2>
+                    <div class="route-pill"><i class="fas fa-route"></i> <span id="displayRouteName">---</span></div>
+                    <p id="currentBarangay" style="margin-top:10px; font-size: 13px; opacity: 0.9;">Waiting for selection...</p>
+                </div>
+
+                <div class="info-group">
+                    <div class="info-item"><span class="label">PLATE NO.</span><span id="plateNumber" class="value">---</span></div>
+                    <div class="info-item"><span class="label">DRIVER</span><span id="driverName" class="value">---</span></div>
+                </div>
+
+                <div id="driverPanel" class="driver-panel" style="display: none;">
+                    <div class="panel-header"><span><i class="fas fa-id-badge"></i> <span id="driverTitle">Driver</span></span><button onclick="logoutDriver()" class="text-link" style="color: #ef4444;">Exit</button></div>
+                    
+                    <button id="driverStatusBtn" onclick="toggleJeepStatus()" class="action-btn">Loading...</button>
+                    
+                    <label style="font-size:10px; font-weight:bold; color:#166534; margin-top:5px;">CHANGE ROUTE:</label>
+                    <div style="display:flex; gap:5px;">
+                        <input type="text" id="routeInput" placeholder="e.g. Mabinay-Bais" style="flex:1; padding:6px; border-radius:5px; border:1px solid #bbf7d0; font-size:12px;">
+                        <button onclick="saveRoute()" class="action-btn" style="width:auto; background:#166534; color:white; padding:6px 12px;">Update</button>
+                    </div>
+                </div>
+
+                <div id="loginLinks" style="text-align: center; font-size: 11px; margin-top: 5px;">
+                    <button onclick="openLoginModal()" class="text-link">Driver Login</button> <span style="color:#ccc">|</span>
+                    <button onclick="openAdminLogin()" class="text-link" style="color:var(--primary); font-weight:bold;">Admin Access</button>
+                </div>
+                
+                <div class="history-section"><ul id="activeUnitList" class="history-list"></ul></div>
+            </div>
+        </aside>
+
+        <div id="map"></div>
+    </div>
+
+    <div id="loginModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <h3>Driver Login</h3>
+            <input type="text" id="driverUser" placeholder="Username" class="modal-input">
+            <input type="password" id="driverPinInput" placeholder="PIN" class="modal-input">
+            <div class="modal-actions"><button onclick="closeModal('loginModal')" class="cancel-btn">Cancel</button><button onclick="attemptLogin()" class="confirm-btn">Login</button></div>
+        </div>
+    </div>
+
+    <div id="adminLoginModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <h3>Admin Access</h3>
+            <input type="text" id="adminUserInput" placeholder="Username" class="modal-input">
+            <input type="password" id="adminPassInput" placeholder="Password" class="modal-input">
+            <div class="modal-actions"><button onclick="closeModal('adminLoginModal')" class="cancel-btn">Cancel</button><button onclick="attemptAdminLogin()" class="confirm-btn">Login</button></div>
+        </div>
+    </div>
+
+    <div id="editDriverModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <h3 id="editModalTitle">Edit Driver</h3>
+            <input type="text" id="editUser" placeholder="Username" class="modal-input">
+            <input type="text" id="editName" placeholder="Full Name" class="modal-input">
+            <input type="text" id="editPin" placeholder="PIN" class="modal-input">
+            <select id="editJeepSelect" class="modal-input"><option value="">-- Assign Jeep --</option></select>
+            <div class="modal-actions"><button onclick="closeModal('editDriverModal')" class="cancel-btn">Cancel</button><button onclick="saveDriverData()" class="confirm-btn">Save</button></div>
+        </div>
+    </div>
+
+    <div id="addJeepModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <h3>Add New Jeep</h3>
+            <input type="text" id="newJeepId" placeholder="Jeep ID (e.g. jeep_003)" class="modal-input">
+            <input type="text" id="newJeepPlate" placeholder="Plate Number" class="modal-input">
+            <input type="text" id="newJeepRoute" placeholder="Default Route" class="modal-input">
+            <div class="modal-actions"><button onclick="closeModal('addJeepModal')" class="cancel-btn">Cancel</button><button onclick="saveNewJeep()" class="confirm-btn">Create</button></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="map-logic.js"></script>
+</body>
+</html>
